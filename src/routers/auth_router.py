@@ -1,7 +1,7 @@
 import sqlite3
 from fastapi import APIRouter, HTTPException, status
-from src.models import AuthRequest, AuthResponse
-from src.services import AuthService
+from src.models.auth_models import AuthRequest, AuthResponse
+from src.services.auth_service import AuthService
 
 auth_router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 

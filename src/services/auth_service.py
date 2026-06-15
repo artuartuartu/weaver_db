@@ -1,5 +1,5 @@
 from database.connection import get_connection
-from src.models import AuthRequest
+from src.models.auth_models import AuthRequest, AuthResponse
 
 class AuthService: 
 
@@ -25,4 +25,5 @@ class AuthService:
             print(f"[Serviço] Novo usuário registrado no banco: {data.email}")
         
         conn.close()
-        
+        return is_vip_status
+    

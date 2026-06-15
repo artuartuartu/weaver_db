@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from database.connection import init_db
-from src.routers import auth_router
+from src.routers import auth_router, project_router
 
 app = FastAPI(
     title="Weaver Studio API Backend",
@@ -11,6 +11,7 @@ app = FastAPI(
 init_db()
 
 app.include_router(auth_router)
+app.include_router(project_router)
 
 @app.get("/", tags=["Home"])
 
