@@ -24,8 +24,8 @@ def create_project(data: ProjectCreate):
             detail=f"Erro interno no servidor: {str(e)}"
         )
 
-@project_router.get("/user/{user_email}", response_model=list[ProjectResponse])
-def get_projects(user_email: str):
+@project_router.get("/users/{user_email}", response_model=list[ProjectResponse])
+def get_projects(user_email: str): 
     try:
         print(f"[Rota] Buscando projetos do usuário: {user_email}")
         return project_service.get_user_projects(user_email)
@@ -37,6 +37,25 @@ def get_projects(user_email: str):
         )
     except Exception as e:
         print(f"[Erro Desconhecido ao buscar projetos]: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno no servidor: {str(e)}"
+        )
+    
+@project_router.delete("/delete/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: str, project_name: str):
+    try:
+        print(f"[Rota] Solicitando a exclusão do projeto: {project_name}")
+        success = project_service.delete_project(project_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Projeto não encontrado para exclusão."
+            )
+        return None
+    except Exception as e:
+        print(f"[Erro ao deletar projeto]: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno no servidor: {str(e)}"

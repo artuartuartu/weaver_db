@@ -7,6 +7,7 @@ class ProjectCreate(BaseModel):
 class ProjectResponse(BaseModel):
     id: str
     name: str
+    user_email: str | None = None
     updated_at: str
 
 class Config:
