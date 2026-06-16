@@ -61,3 +61,38 @@ class ProjectService:
             )
         print(f"[ProjectService] {len(projects)} projetos encontrados para {user_email}")
         return projects
+    
+    def delete_project(self, project_id: str) -> bool:
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT file_path, name FROM projects WHERE id = ?", (project_id,))
+            row = cursor.fetchone()
+
+            if not row:
+                print(f"[ProjectService] Projeto {project_name} não encontrado no banco.")
+                conn.close()
+                return False
+            
+            file_path = row[0]
+            project_name = row[1]
+
+            cursor.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+            conn.commit()
+            conn.close()
+            print(f"[ProjectService] Registro do projeto {project_name} removido do banco de dados.")
+
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"[ProjectService] Arquivo JSON deletado com sucesso: {file_path}")
+            else:
+                print(f"[ProjectService] Arquivo JSON não foi encontrado no caminho: {file_path}")
+            return True
+        except Exception as e:
+            print(f"[ProjectService] Erro ao deletar projeto {project_name}: {str(e)}")
+            try:
+                conn.close()
+            except:
+                pass
+            raise e
