@@ -9,7 +9,7 @@ STORAGE_DIR = "./storage/projects"
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
 class ProjectService:
-    def create_initial_project(self, data: ProjectCreate) -> ProjectResponse:
+    def create_project(self, data: ProjectCreate) -> ProjectResponse:
         project_id = str(uuid.uuid4())
         file_name = f"{project_id}.json"
         file_path = os.path.join(STORAGE_DIR, file_name)
