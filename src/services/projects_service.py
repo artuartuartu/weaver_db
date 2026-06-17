@@ -9,7 +9,7 @@ STORAGE_DIR = "./storage/projects"
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
 class ProjectService:
-    def create_initial_project(self, data: ProjectCreate) -> ProjectResponse:
+    def create_project(self, data: ProjectCreate) -> ProjectResponse:
         project_id = str(uuid.uuid4())
         file_name = f"{project_id}.json"
         file_path = os.path.join(STORAGE_DIR, file_name)
@@ -95,4 +95,33 @@ class ProjectService:
                 conn.close()
             except:
                 pass
+            raise e
+        
+    def update_project_name(self, project_id: str, new_name: str) -> ProjectResponse | None:
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+            cursor.execute("""
+                UPDATE projects
+                SET name = ?, updated_at = ?
+                WHERE id = ?
+            """, (new_name, now_str, project_id))
+
+            conn.commit()
+
+            cursor.execute("SELECT id, name, updated_at, user_email FROM projects WHERE id = ?", (project_id,))
+            row = cursor.fetchone()
+            conn.close()
+
+            if row:
+                print(f"[ProjectService] O projeto foi renomeado com sucesso para '{new_name}'")
+                return ProjectResponse(id=row[0], name=row[1], updated_at=row[2], user_email=row[3])
+            return None
+        
+        except Exception as e:
+            print(f"[ProjectService] Erro ao renomear projeto {project_id}: {str(e)}")
+            try: conn.close()
+            except: pass
             raise e
