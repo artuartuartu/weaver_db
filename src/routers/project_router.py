@@ -30,7 +30,7 @@ def get_user_projects(
     
     return project_service.get_user_projects(user_email)
     
-@project_router.delete("/delete/{project_id}", status_code=status.HTTP_200_OK)
+@project_router.delete("/{project_id}", status_code=status.HTTP_200_OK)
 def delete_project(
     project_id: str,
     user_email: str = Depends(get_current_user_email)
@@ -42,7 +42,7 @@ def delete_project(
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
     return {"detail": "Projeto deletado com sucesso."}
     
-@project_router.put("/update/{project_id}", response_model=ProjectResponse)
+@project_router.put("/{project_id}", response_model=ProjectResponse)
 def update_project_name(
     project_id: str,
     new_name: str = Query(..., pattern=r"^[\w\s-]+$"),
