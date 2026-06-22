@@ -5,7 +5,7 @@ from datetime import datetime
 from database.connection import get_connection
 from src.models.project_models import ProjectCreate, ProjectResponse 
 
-STORAGE_DIR = "./storage/projects"
+STORAGE_DIR = os.getenv("STORAGE_DIR", "./storage/projects")
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
 class ProjectService:
