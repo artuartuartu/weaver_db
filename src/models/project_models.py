@@ -10,6 +10,5 @@ class ProjectResponse(BaseModel):
     user_email: str | None = None
     updated_at: str
 
-class Config:
-    from_attributes = True
+    model_config = {"from_attributes": True}
     

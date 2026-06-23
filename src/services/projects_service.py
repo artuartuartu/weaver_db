@@ -1,127 +1,98 @@
-import os
 import json
+import os
 import uuid
 from datetime import datetime
-from database.connection import get_connection
-from src.models.project_models import ProjectCreate, ProjectResponse 
+
+from sqlmodel import Session, select
+
+from database.models import Project
+from src.models.project_models import ProjectCreate, ProjectResponse
 
 STORAGE_DIR = os.getenv("STORAGE_DIR", "./storage/projects")
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
+
 class ProjectService:
-    def create_project(self, data: ProjectCreate) -> ProjectResponse:
+    def create_project(self, data: ProjectCreate, session: Session) -> ProjectResponse:
         project_id = str(uuid.uuid4())
         file_name = f"{project_id}.json"
         file_path = os.path.join(STORAGE_DIR, file_name)
         now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-        initial_diagram = {
-            "nodes": [],
-            "edges": []
-        }
+        initial_diagram = {"nodes": [], "edges": []}
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(initial_diagram, f, ensure_ascii=False, indent=4)
 
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO projects (id, name, file_path, updated_at, user_email)
-            VALUES (?, ?, ?, ?, ?)           
-        """, (project_id, data.name, file_path, now_str, data.user_email))
-
-        conn.commit()
-        conn.close()
+        project = Project(
+            id=project_id,
+            name=data.name,
+            file_path=file_path,
+            updated_at=now_str,
+            user_email=data.user_email,
+        )
+        session.add(project)
+        session.commit()
 
         print(f"[ProjectService] Novo projeto '{data.name}' criado com ID {project_id}")
         return ProjectResponse(id=project_id, name=data.name, updated_at=now_str)
-    
-    def get_user_projects(self, user_email: str) -> list[ProjectResponse]:
-        conn = get_connection()
-        cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT id, name, updated_at
-            FROM projects
-            WHERE user_email = ?
-            ORDER BY id DESC
-        """, (user_email,))
+    def get_user_projects(self, user_email: str, session: Session) -> list[ProjectResponse]:
+        projects = session.exec(
+            select(Project)
+            .where(Project.user_email == user_email)
+            .order_by(Project.id.desc())
+        ).all()
 
-        rows = cursor.fetchall()
-        conn.close()
+        result = [
+            ProjectResponse(id=p.id, name=p.name, updated_at=p.updated_at)
+            for p in projects
+        ]
+        print(f"[ProjectService] {len(result)} projetos encontrados para {user_email}")
+        return result
 
-        projects = []
-        for row in rows:
-            projects.append(
-                ProjectResponse(
-                    id=row[0],
-                    name=row[1],
-                    updated_at=row[2]
-                )
-            )
-        print(f"[ProjectService] {len(projects)} projetos encontrados para {user_email}")
-        return projects
-    
-    def delete_project(self, project_id: str) -> bool:
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
+    def delete_project(self, project_id: str, session: Session) -> bool:
+        project = session.exec(
+            select(Project).where(Project.id == project_id)
+        ).first()
 
-            cursor.execute("SELECT file_path, name FROM projects WHERE id = ?", (project_id,))
-            row = cursor.fetchone()
+        if not project:
+            print(f"[ProjectService] Projeto não encontrado no banco.")
+            return False
 
-            if not row:
-                print(f"[ProjectService] Projeto {project_name} não encontrado no banco.")
-                conn.close()
-                return False
-            
-            file_path = row[0]
-            project_name = row[1]
+        file_path = project.file_path
+        project_name = project.name
 
-            cursor.execute("DELETE FROM projects WHERE id = ?", (project_id,))
-            conn.commit()
-            conn.close()
-            print(f"[ProjectService] Registro do projeto {project_name} removido do banco de dados.")
+        session.delete(project)
+        session.commit()
 
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                print(f"[ProjectService] Arquivo JSON deletado com sucesso: {file_path}")
-            else:
-                print(f"[ProjectService] Arquivo JSON não foi encontrado no caminho: {file_path}")
-            return True
-        except Exception as e:
-            print(f"[ProjectService] Erro ao deletar projeto {project_name}: {str(e)}")
-            try:
-                conn.close()
-            except:
-                pass
-            raise e
-        
-    def update_project_name(self, project_id: str, new_name: str) -> ProjectResponse | None:
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+        print(f"[ProjectService] Registro do projeto {project_name} removido do banco de dados.")
 
-            cursor.execute("""
-                UPDATE projects
-                SET name = ?, updated_at = ?
-                WHERE id = ?
-            """, (new_name, now_str, project_id))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"[ProjectService] Arquivo JSON deletado com sucesso: {file_path}")
+        else:
+            print(f"[ProjectService] Arquivo JSON não foi encontrado no caminho: {file_path}")
+        return True
 
-            conn.commit()
+    def update_project_name(self, project_id: str, new_name: str, session: Session) -> ProjectResponse | None:
+        project = session.exec(
+            select(Project).where(Project.id == project_id)
+        ).first()
 
-            cursor.execute("SELECT id, name, updated_at, user_email FROM projects WHERE id = ?", (project_id,))
-            row = cursor.fetchone()
-            conn.close()
-
-            if row:
-                print(f"[ProjectService] O projeto foi renomeado com sucesso para '{new_name}'")
-                return ProjectResponse(id=row[0], name=row[1], updated_at=row[2], user_email=row[3])
+        if not project:
             return None
-        
-        except Exception as e:
-            print(f"[ProjectService] Erro ao renomear projeto {project_id}: {str(e)}")
-            try: conn.close()
-            except: pass
-            raise e
+
+        now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+        project.name = new_name
+        project.updated_at = now_str
+        session.add(project)
+        session.commit()
+        session.refresh(project)
+
+        print(f"[ProjectService] O projeto foi renomeado com sucesso para '{new_name}'")
+        return ProjectResponse(
+            id=project.id,
+            name=project.name,
+            updated_at=project.updated_at,
+            user_email=project.user_email,
+        )
