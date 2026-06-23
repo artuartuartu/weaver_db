@@ -1,6 +1,7 @@
+import os
 import sqlite3
 
-DB_FILE = "weaver.db"
+DB_FILE = os.getenv("DB_FILE", "weaver.db")
 
 def get_connection():
     return sqlite3.connect(DB_FILE)
