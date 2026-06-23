@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    container_name: weaver-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_FILE=/app/data/weaver.db
+      - STORAGE_DIR=/app/data/storage/projects
+    volumes:
+      - weaver_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  weaver_data:
